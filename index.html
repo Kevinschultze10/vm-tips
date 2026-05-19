@@ -118,6 +118,15 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
 .player-row{background:var(--s);border:1px solid var(--b);border-radius:8px;padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
 .savebar{position:fixed;bottom:1.25rem;right:1.25rem;background:var(--green);color:#fff;padding:9px 18px;border-radius:8px;font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;opacity:0;transform:translateY(8px);transition:all .28s;pointer-events:none;z-index:200}
 .savebar.show{opacity:1;transform:translateY(0)}
+
+/* countdown */
+.countdown{display:flex;justify-content:center;gap:12px;margin-top:1rem;flex-wrap:wrap}
+.cd-box{background:var(--s);border:1px solid var(--b);border-radius:8px;padding:.6rem .9rem;text-align:center;min-width:64px}
+.cd-num{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold);line-height:1}
+.cd-label{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--tm);margin-top:2px}
+.cd-done{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.08em;color:var(--green2);text-transform:uppercase;margin-top:.75rem;text-align:center}
+.cd-locked-banner{background:rgba(224,80,80,.12);border:1px solid rgba(224,80,80,.3);border-radius:8px;padding:.7rem 1rem;font-size:.82rem;color:#e07070;text-align:center;margin-bottom:1rem;line-height:1.5}
+
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--tm);font-size:.88rem;line-height:1.7}
 @media(max-width:520px){
   .mc,.am{font-size:.82rem}.tn{font-size:.78rem}
@@ -167,6 +176,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
     <div class="hbadge">⚽ FIFA World Cup 2026</div>
     <h1>VM<span>-TIPS</span></h1>
     <div class="hplayer" id="hplayer"></div>
+    <div id="countdownWrap"></div>
   </header>
   <nav>
     <button class="nb active" onclick="go('tips')">Gruppspel</button>
@@ -188,6 +198,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <button class="btn" onclick="saveTips()">Spara tips</button>
       </div>
       <p style="font-size:.82rem;color:var(--tm);margin-bottom:.85rem;line-height:1.6"><strong style="color:var(--t)">+3p</strong> exakt rätt resultat &nbsp;·&nbsp; <strong style="color:var(--t)">+1p</strong> rätt vinnare/oavgjort</p>
+      <div class="cd-locked-banner" id="deadlineBannerGrp" style="display:none">🔒 Deadline passerad — tips är låsta. VM startade 11 juni!</div>
       <div class="stitle" style="margin-top:0">Gruppspel <span>/ 48 matcher</span></div>
       <div class="mgrid" id="gmGrid"></div>
     </div>
@@ -204,6 +215,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <div class="stitle" style="margin-top:0;border:none;padding:0">VM-Frågor</div>
         <button class="btn" onclick="saveQTips()">Spara svar</button>
       </div>
+      <div class="cd-locked-banner" id="deadlineBannerQ" style="display:none">🔒 Deadline passerad — svar är låsta. VM startade 11 juni!</div>
       <p style="font-size:.82rem;color:var(--tm);margin-bottom:1.25rem;line-height:1.6">Svara på frågorna nedan. Admin rättar svaren och poängen räknas in i poängtabellen.</p>
       <div id="qGrid"></div>
     </div>
@@ -408,6 +420,8 @@ async function startSession(){
   document.getElementById('tname').textContent=player.name;
   if(player.is_admin)document.getElementById('adminBtn').style.display='block';
   hide('loadingScreen');document.getElementById('app').style.display='block';
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
   go('tips');
 }
 
@@ -456,9 +470,11 @@ function renderGM(){
     });
   }
   document.getElementById('gmGrid').innerHTML=h;
+  lockAfterDeadline();
 }
 function setT(id,side,val){if(!tips[id])tips[id]={home:null,away:null};tips[id][side]=val===''?null:parseInt(val);clearTimeout(saveT);saveT=setTimeout(saveTips,4000);}
 async function saveTips(){
+  if(isPastDeadline()){flash('🔒 Deadline passerad — kan inte spara',false);return;}
   clearTimeout(saveT);
   const ups=[];
   for(const[mid,s] of Object.entries(tips))if(s.home!=null&&s.away!=null)ups.push({player_id:player.id,match_id:mid,home_score:s.home,away_score:s.away,updated_at:new Date().toISOString()});
@@ -584,9 +600,11 @@ function renderQ(){
     </div>`;
   });
   document.getElementById('qGrid').innerHTML=h;
+  lockAfterDeadline();
 }
 function setQ(id,val){qTips[id]=val;}
 async function saveQTips(){
+  if(isPastDeadline()){flash('🔒 Deadline passerad — kan inte spara',false);return;}
   const ups=QUESTIONS.filter(q=>qTips[q.id]).map(q=>({player_id:player.id,question_id:q.id,answer:qTips[q.id],updated_at:new Date().toISOString()}));
   if(!ups.length){flash('Inget att spara',false);return;}
   const{error}=await sb.from('q_tips').upsert(ups,{onConflict:'player_id,question_id'});
@@ -629,6 +647,10 @@ async function renderLB(){
 
 // ── SPY MODAL ──
 async function openSpy(pid,pname,mt){
+  if(!isPastDeadline() && pid !== player?.id){
+    flash('👁 Andras tips visas efter deadline — 11 juni!', false);
+    return;
+  }
   const p=window._lbPlayers?.find(x=>x.id===pid);
   if(!p)return;
   document.getElementById('spyName').textContent=pname+'s tips';
@@ -744,6 +766,50 @@ async function deletePlayer(id,name){
   flash('✓ Spelare borttagen');renderAdmin();
 }
 async function makeAdmin(id){await sb.from('players').update({is_admin:true}).eq('id',id);flash('✓ Nu admin');renderAdmin();}
+
+
+// ── DEADLINE ──
+const DEADLINE = new Date('2026-06-10T23:59:00+02:00'); // Swedish time (CEST)
+
+function isPastDeadline(){
+  return new Date() > DEADLINE;
+}
+
+function updateCountdown(){
+  const wrap = document.getElementById('countdownWrap');
+  if(!wrap) return;
+  const now = new Date();
+  const diff = DEADLINE - now;
+  if(diff <= 0){
+    wrap.innerHTML = '<div class="cd-done">⏰ Deadline passerad — 11 Juni har VM-tipset startat!</div>';
+    return;
+  }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  wrap.innerHTML = `<div class="countdown">
+    <div class="cd-box"><div class="cd-num">${days}</div><div class="cd-label">Dagar</div></div>
+    <div class="cd-box"><div class="cd-num">${String(hours).padStart(2,'0')}</div><div class="cd-label">Timmar</div></div>
+    <div class="cd-box"><div class="cd-num">${String(mins).padStart(2,'0')}</div><div class="cd-label">Minuter</div></div>
+    <div class="cd-box"><div class="cd-num">${String(secs).padStart(2,'0')}</div><div class="cd-label">Sekunder</div></div>
+  </div>`;
+}
+
+function lockAfterDeadline(){
+  if(!isPastDeadline()) return;
+  // Lock group tips inputs
+  document.querySelectorAll('#gmGrid input').forEach(i=>i.disabled=true);
+  document.querySelectorAll('#gmGrid .mc').forEach(m=>m.classList.add('locked'));
+  // Lock questions
+  document.querySelectorAll('.q-inp').forEach(i=>{i.disabled=true;i.classList.add('locked');});
+  // Show locked banners
+  const grpBanner = document.getElementById('deadlineBannerGrp');
+  const qBanner = document.getElementById('deadlineBannerQ');
+  if(grpBanner) grpBanner.style.display='block';
+  if(qBanner) qBanner.style.display='block';
+}
+
 
 window.addEventListener('DOMContentLoaded',boot);
 </script>
