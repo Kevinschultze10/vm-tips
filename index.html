@@ -296,6 +296,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <h3>📋 Övrigt</h3>
         <ul>
           <li>Alla tips måste vara sparade <strong>innan matcherna börjar</strong> — låses automatiskt när resultatet läggs in</li>
+          <li>Slutspelsresultat gäller efter <strong>120 minuter</strong> (ej straffar). Vid oavgjort väljer du vilket lag som går vidare på straffar</li>
           <li>Poängtabellen uppdateras i realtid när admin lägger in resultat</li>
           <li>Klicka på en spelare i poängtabellen för att se deras tips</li>
           <li>Vid lika poäng vinner den med flest exakta resultat</li>
@@ -444,7 +445,7 @@ async function startSession(){
 // ── DATA ──
 async function loadTips(){const{data}=await sb.from('tips').select('*').eq('player_id',player.id);tips={};(data||[]).forEach(t=>{tips[t.match_id]={home:t.home_score,away:t.away_score};});}
 async function loadResults(){const{data}=await sb.from('results').select('*');results={};(data||[]).forEach(r=>{results[r.match_id]={home:r.home_score,away:r.away_score};});}
-async function loadKOtips(){const{data}=await sb.from('ko_tips').select('*').eq('player_id',player.id);koTips={};(data||[]).forEach(t=>{koTips[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team};});}
+async function loadKOtips(){const{data}=await sb.from('ko_tips').select('*').eq('player_id',player.id);koTips={};(data||[]).forEach(t=>{koTips[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team,penWinner:t.pen_winner||''};});}
 async function loadQTips(){const{data}=await sb.from('q_tips').select('*').eq('player_id',player.id);qTips={};(data||[]).forEach(t=>{qTips[t.question_id]=t.answer;});}
 async function loadQAnswers(){const{data}=await sb.from('q_answers').select('*');qAnswers={};(data||[]).forEach(a=>{qAnswers[a.question_id]=a.answer;});}
 async function loadAllTips(){const{data}=await sb.from('tips').select('*');return data||[];}
@@ -582,8 +583,21 @@ function getGroupAdvancers(playerTips){
   thirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd);
   return{winners,runners,best3:thirds.slice(0,8).map(t=>t.team)};
 }
-function getKOWinner(tip){if(!tip||tip.home==null||tip.away==null)return null;return +tip.home>=+tip.away?tip.homeTeam:tip.awayTeam;}
-function getKOLoser(tip){if(!tip||tip.home==null||tip.away==null)return null;return +tip.home<+tip.away?tip.homeTeam:tip.awayTeam;}
+function getKOWinner(tip){
+  if(!tip||tip.home==null||tip.away==null)return null;
+  const h=+tip.home,a=+tip.away;
+  if(h===a){return tip.penWinner||null;} // drawn — use penalty winner
+  return h>a?tip.homeTeam:tip.awayTeam;
+}
+function getKOLoser(tip){
+  if(!tip||tip.home==null||tip.away==null)return null;
+  const h=+tip.home,a=+tip.away;
+  if(h===a){
+    if(!tip.penWinner)return null;
+    return tip.penWinner===tip.homeTeam?tip.awayTeam:tip.homeTeam;
+  }
+  return h<a?tip.homeTeam:tip.awayTeam;
+}
 
 function matchCard(mid,homeTeam,awayTeam,tip,res,sc,label,readOnly=false){
   const locked=res||readOnly?'locked':'';
@@ -591,14 +605,29 @@ function matchCard(mid,homeTeam,awayTeam,tip,res,sc,label,readOnly=false){
   const htL=ht?`<span>${ht}</span>`:`<span class="tbd">TBD</span>`;
   const atL=at?`<span>${at}</span>`:`<span class="tbd">TBD</span>`;
   const dis=(!ht||!at||locked)?'locked':'';
+  // Show penalty selector if scores are equal and both filled
+  const isDrawn = tip.home!=null && tip.away!=null && +tip.home===+tip.away;
+  const penWinner = tip.penWinner||'';
+  const penHtml = isDrawn && !locked ? `
+    <div style="margin-top:6px;display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap">
+      <span style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--tm);letter-spacing:.08em;text-transform:uppercase">Straffar:</span>
+      <select style="background:var(--bg);border:1px solid var(--b);border-radius:5px;padding:4px 8px;color:var(--t);font-size:.8rem;outline:none;cursor:pointer" onchange="setKOTPen('${mid}',this.value,'${ht||''}','${at||''}')">
+        <option value="">— Vem vinner? —</option>
+        <option value="${ht||''}" ${penWinner===ht?'selected':''}>${ht||'?'}</option>
+        <option value="${at||''}" ${penWinner===at?'selected':''}>${at||'?'}</option>
+      </select>
+    </div>` : (isDrawn && locked && penWinner ? `<div style="margin-top:4px;text-align:center;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--tm)">Straffar: <strong style="color:var(--t)">${penWinner}</strong></div>` : '');
   return `<div class="mc ${dis}" style="margin-bottom:7px">
     <div class="tn tl">${htL}</div>
-    <div><div class="mlabel">${label}${bdg(sc)}</div>
+    <div>
+      <div class="mlabel">${label} (120 min)${bdg(sc)}</div>
       <div class="si">
         <input type="number" min="0" max="20" value="${tip.home??''}" placeholder="0" oninput="setKOT('${mid}','home',this.value,'${ht||''}','${at||''}')">
         <span class="ssep">–</span>
         <input type="number" min="0" max="20" value="${tip.away??''}" placeholder="0" oninput="setKOT('${mid}','away',this.value,'${ht||''}','${at||''}')">
-      </div></div>
+      </div>
+      ${penHtml}
+    </div>
     <div class="tn tr">${atL}</div></div>`;
 }
 
@@ -643,10 +672,24 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   if(!readOnly)html+=`<div style="margin-top:1.5rem;display:flex;justify-content:flex-end"><button class="btn" onclick="saveKOTips()">Spara slutspelstips</button></div>`;
   wrap.innerHTML=html;
 }
-function setKOT(id,side,val,ht,at){if(!koTips[id])koTips[id]={home:null,away:null,homeTeam:ht,awayTeam:at};koTips[id][side]=val===''?null:parseInt(val);koTips[id].homeTeam=ht;koTips[id].awayTeam=at;}
+function setKOT(id,side,val,ht,at){
+  if(!koTips[id])koTips[id]={home:null,away:null,homeTeam:ht,awayTeam:at,penWinner:''};
+  koTips[id][side]=val===''?null:parseInt(val);
+  koTips[id].homeTeam=ht;koTips[id].awayTeam=at;
+  // If no longer a draw, clear penalty winner
+  const h=koTips[id].home,a=koTips[id].away;
+  if(h!=null&&a!=null&&+h!==+a)koTips[id].penWinner='';
+  // Re-render KO tree to show/hide penalty selector
+  renderKOTree();
+}
+function setKOTPen(id,val,ht,at){
+  if(!koTips[id])koTips[id]={home:null,away:null,homeTeam:ht,awayTeam:at,penWinner:''};
+  koTips[id].penWinner=val;
+  koTips[id].homeTeam=ht;koTips[id].awayTeam=at;
+}
 async function saveKOTips(){
   const ups=[];
-  for(const[mid,s] of Object.entries(koTips))if(s.home!=null&&s.away!=null)ups.push({player_id:player.id,match_id:mid,home_score:s.home,away_score:s.away,home_team:s.homeTeam,away_team:s.awayTeam,updated_at:new Date().toISOString()});
+  for(const[mid,s] of Object.entries(koTips))if(s.home!=null&&s.away!=null)ups.push({player_id:player.id,match_id:mid,home_score:s.home,away_score:s.away,home_team:s.homeTeam,away_team:s.awayTeam,pen_winner:s.penWinner||null,updated_at:new Date().toISOString()});
   if(!ups.length){flash('Inget att spara',false);return;}
   const{error}=await sb.from('ko_tips').upsert(ups,{onConflict:'player_id,match_id'});
   if(error)flash('✗ Fel: '+error.message,false);else{flash('✓ Slutspel sparat!');renderKOTree();}
