@@ -127,6 +127,22 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
 .cd-done{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.08em;color:var(--green2);text-transform:uppercase;margin-top:.75rem;text-align:center}
 .cd-locked-banner{background:rgba(224,80,80,.12);border:1px solid rgba(224,80,80,.3);border-radius:8px;padding:.7rem 1rem;font-size:.82rem;color:#e07070;text-align:center;margin-bottom:1rem;line-height:1.5}
 
+
+/* group standing tables */
+.groups-layout{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
+.group-block{margin-bottom:0}
+.group-matches-col{display:grid;gap:7px}
+.gtable{width:100%;border-collapse:collapse;margin-top:4px;margin-bottom:1.25rem}
+.gtable th{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--tm);padding:5px 6px;border-bottom:1px solid var(--b);text-align:right;white-space:nowrap}
+.gtable th:first-child{text-align:left}
+.gtable td{padding:6px 6px;font-size:.8rem;border-bottom:1px solid rgba(42,56,42,.5);text-align:right;font-family:'DM Mono',monospace}
+.gtable td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.82rem}
+.gtable tr:last-child td{border-bottom:none}
+.gtable tr.top2{background:rgba(26,107,60,.12)}
+.gtable tr.top2 td:first-child::after{content:' ✓';font-size:.65rem;color:var(--green2)}
+.gt-pos{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--tm);width:16px;text-align:center!important}
+@media(max-width:700px){.groups-layout{grid-template-columns:1fr}}
+
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--tm);font-size:.88rem;line-height:1.7}
 @media(max-width:520px){
   .mc,.am{font-size:.82rem}.tn{font-size:.78rem}
@@ -200,7 +216,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
       <p style="font-size:.82rem;color:var(--tm);margin-bottom:.85rem;line-height:1.6"><strong style="color:var(--t)">+3p</strong> exakt rätt resultat &nbsp;·&nbsp; <strong style="color:var(--t)">+1p</strong> rätt vinnare/oavgjort</p>
       <div class="cd-locked-banner" id="deadlineBannerGrp" style="display:none">🔒 Deadline passerad — tips är låsta. VM startade 11 juni!</div>
       <div class="stitle" style="margin-top:0">Gruppspel <span>/ 48 matcher</span></div>
-      <div class="mgrid" id="gmGrid"></div>
+      <div class="groups-layout" id="gmGrid"></div>
     </div>
 
     <!-- SLUTSPEL -->
@@ -451,28 +467,89 @@ function go(name){
 }
 
 // ── GRUPPSPEL ──
+function calcStandings(group, playerTips){
+  const teams=GROUPS[group], table={};
+  teams.forEach(t=>{table[t]={p:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0};});
+  GM.filter(m=>m.group===group).forEach(m=>{
+    const tip=playerTips[m.id];
+    if(!tip||tip.home==null||tip.away==null)return;
+    const h=+tip.home,a=+tip.away;
+    table[m.home].p++;table[m.away].p++;
+    table[m.home].gf+=h;table[m.home].ga+=a;table[m.home].gd+=(h-a);
+    table[m.away].gf+=a;table[m.away].ga+=h;table[m.away].gd+=(a-h);
+    if(h>a){table[m.home].w++;table[m.home].pts+=3;table[m.away].l++;}
+    else if(h<a){table[m.away].w++;table[m.away].pts+=3;table[m.home].l++;}
+    else{table[m.home].d++;table[m.away].d++;table[m.home].pts++;table[m.away].pts++;}
+  });
+  return teams.map(t=>({name:t,...table[t]}))
+    .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+}
+
+function renderGroupTable(group){
+  const rows=calcStandings(group,tips);
+  return `<table class="gtable">
+    <thead><tr>
+      <th></th><th style="text-align:left">Lag</th>
+      <th>S</th><th>V</th><th>O</th><th>F</th>
+      <th>GM</th><th>GI</th><th>MS</th><th>P</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr class="${i<2?'top2':''}">
+      <td class="gt-pos">${i+1}</td>
+      <td>${r.name}</td>
+      <td>${r.p}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
+      <td>${r.gf}</td><td>${r.ga}</td>
+      <td>${r.gd>0?'+'+r.gd:r.gd}</td>
+      <td style="color:var(--gold);font-weight:600">${r.pts}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
 function renderGM(){
   const byG={};GM.forEach(m=>{if(!byG[m.group])byG[m.group]=[];byG[m.group].push(m);});
   let h='';
   for(const[g,ms] of Object.entries(byG)){
-    h+=`<div class="glabel">Grupp ${g}</div>`;
+    let matchesHtml='';
     ms.forEach(m=>{
       const t=tips[m.id]||{},r=results[m.id],sc=r?pts(t,r):null;
-      h+=`<div class="mc ${r?'locked':''}">
+      matchesHtml+=`<div class="mc ${r?'locked':''}">
         <div class="tn tl">${m.home}</div>
-        <div><div class="mlabel">Grupp ${m.group}${bdg(sc)}</div>
+        <div><div class="mlabel">Grupp ${g}${bdg(sc)}</div>
           <div class="si">
-            <input type="number" min="0" max="20" value="${t.home??''}" placeholder="0" oninput="setT('${m.id}','home',this.value)">
+            <input type="number" min="0" max="20" value="${t.home??''}" placeholder="0" oninput="setT('${m.id}','home',this.value,'${g}')">
             <span class="ssep">–</span>
-            <input type="number" min="0" max="20" value="${t.away??''}" placeholder="0" oninput="setT('${m.id}','away',this.value)">
+            <input type="number" min="0" max="20" value="${t.away??''}" placeholder="0" oninput="setT('${m.id}','away',this.value,'${g}')">
           </div></div>
         <div class="tn tr">${m.away}</div></div>`;
     });
+    h+=`<div class="group-block">
+      <div class="glabel" style="margin-bottom:.5rem">Grupp ${g}</div>
+      ${renderGroupTable(g)}
+      <div class="group-matches-col">${matchesHtml}</div>
+    </div>`;
   }
   document.getElementById('gmGrid').innerHTML=h;
   lockAfterDeadline();
 }
-function setT(id,side,val){if(!tips[id])tips[id]={home:null,away:null};tips[id][side]=val===''?null:parseInt(val);clearTimeout(saveT);saveT=setTimeout(saveTips,4000);}
+function setT(id,side,val,group){
+  if(!tips[id])tips[id]={home:null,away:null};
+  tips[id][side]=val===''?null:parseInt(val);
+  // Live update the group table for this group
+  if(group){
+    const blocks=document.querySelectorAll('.group-block');
+    blocks.forEach(block=>{
+      const lbl=block.querySelector('.glabel');
+      if(lbl&&lbl.textContent.trim()==='Grupp '+group){
+        const oldTable=block.querySelector('.gtable');
+        if(oldTable){
+          const tmp=document.createElement('div');
+          tmp.innerHTML=renderGroupTable(group);
+          oldTable.replaceWith(tmp.firstChild);
+        }
+      }
+    });
+  }
+  clearTimeout(saveT);saveT=setTimeout(saveTips,4000);
+}
 async function saveTips(){
   if(isPastDeadline()){flash('🔒 Deadline passerad — kan inte spara',false);return;}
   clearTimeout(saveT);
