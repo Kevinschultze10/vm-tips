@@ -380,9 +380,21 @@ function ptsKO(tip,res,round){
   const lp=KO_ROUND_PTS[round]||1;
   if(!tip||tip.home==null)return{p:0,t:'none'};
   const th=+tip.home,ta=+tip.away,rh=+res.home,ra=+res.away;
-  if(th===rh&&ta===ra)return{p:lp*2+3,t:'x',lp};
-  const tw=th>ta?'h':th<ta?'a':'d',rw=rh>ra?'h':rh<ra?'a':'d';
-  return tw===rw?{p:lp,t:'w',lp}:{p:0,t:'l'};
+  // Exact result after 120 min
+  if(th===rh&&ta===ra){
+    // If drawn, also check pen winner matches res pen winner
+    if(th===ta){
+      const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
+      return penMatch?{p:lp*2+3,t:'x',lp}:{p:lp,t:'w',lp}; // still get team pts if right draw
+    }
+    return{p:lp*2+3,t:'x',lp};
+  }
+  // Right winner (including via penalties)
+  const tipWinner = th>ta?tip.homeTeam:(th<ta?tip.awayTeam:(tip.penWinner||null));
+  const resWinner = rh>ra?'h':(rh<ra?'a':'pen');
+  const resWinTeam = rh>ra?res.homeTeam:(rh<ra?res.awayTeam:(res.penWinner||null));
+  if(tipWinner && resWinTeam && tipWinner===resWinTeam)return{p:lp,t:'w',lp};
+  return{p:0,t:'l'};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
@@ -599,14 +611,14 @@ function getKOLoser(tip){
   return h<a?tip.homeTeam:tip.awayTeam;
 }
 
-function matchCard(mid,homeTeam,awayTeam,tip,res,sc,label,readOnly=false){
+function matchCard(mid,homeTeam,awayTeam,tip,res,sc,label,readOnly=false,isTBD=false){
   const locked=res||readOnly?'locked':'';
   const ht=homeTeam||null,at=awayTeam||null;
   const htL=ht?`<span>${ht}</span>`:`<span class="tbd">TBD</span>`;
   const atL=at?`<span>${at}</span>`:`<span class="tbd">TBD</span>`;
-  const dis=(!ht||!at||locked)?'locked':'';
+  const dis=(isTBD||!ht||!at||locked)?'locked':'';
   // Show penalty selector if scores are equal and both filled
-  const isDrawn = tip.home!=null && tip.away!=null && +tip.home===+tip.away;
+  const isDrawn = tip.home!=null && tip.away!=null && tip.home!=='' && tip.away!=='' && +tip.home===+tip.away;
   const penWinner = tip.penWinner||'';
   const penHtml = isDrawn && !locked ? `
     <div style="margin-top:6px;display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap">
@@ -622,9 +634,9 @@ function matchCard(mid,homeTeam,awayTeam,tip,res,sc,label,readOnly=false){
     <div>
       <div class="mlabel">${label} (120 min)${bdg(sc)}</div>
       <div class="si">
-        <input type="number" min="0" max="20" value="${tip.home??''}" placeholder="0" oninput="setKOT('${mid}','home',this.value,'${ht||''}','${at||''}')">
+        <input type="number" min="0" max="20" value="${tip.home!=null?tip.home:''}" placeholder="–" oninput="setKOT('${mid}','home',this.value,'${ht||''}','${at||''}')">
         <span class="ssep">–</span>
-        <input type="number" min="0" max="20" value="${tip.away??''}" placeholder="0" oninput="setKOT('${mid}','away',this.value,'${ht||''}','${at||''}')">
+        <input type="number" min="0" max="20" value="${tip.away!=null?tip.away:''}" placeholder="–" oninput="setKOT('${mid}','away',this.value,'${ht||''}','${at||''}')">
       </div>
       ${penHtml}
     </div>
@@ -649,17 +661,45 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
     html+=matchCard(mid,ht,at,t,res,sc,'Sextondelsfinal',readOnly);
   });
   html+=`</div>`;
-  // R16
+  // R16 — explicit pairings
+  const R16_PAIRS=[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
   html+=`<div class="ko-section"><div class="stitle">Åttondelsfinaler</div>`;
-  for(let i=0;i<8;i++){const mid='r16_'+i;const ht=getKOWinner(myKO['r32_'+(i*2)]),at=getKOWinner(myKO['r32_'+(i*2+1)]);const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'r16'):null;html+=matchCard(mid,ht,at,t,res,sc,'Åttondelsfinaler',readOnly);}
+  R16_PAIRS.forEach(([a,b],i)=>{
+    const mid='r16_'+i;
+    const ht=getKOWinner(myKO['r32_'+a]);
+    const at=getKOWinner(myKO['r32_'+b]);
+    // If TBD, show helpful label
+    const htLabel = ht || ('Vinnare match '+(a+1));
+    const atLabel = at || ('Vinnare match '+(b+1));
+    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'r16'):null;
+    html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Åttondelsfinaler',readOnly,!ht||!at);
+  });
   html+=`</div>`;
   // QF
+  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
   html+=`<div class="ko-section"><div class="stitle">Kvartsfinaler</div>`;
-  for(let i=0;i<4;i++){const mid='qf_'+i;const ht=getKOWinner(myKO['r16_'+(i*2)]),at=getKOWinner(myKO['r16_'+(i*2+1)]);const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'qf'):null;html+=matchCard(mid,ht,at,t,res,sc,'Kvartsfinal',readOnly);}
+  QF_PAIRS.forEach(([a,b],i)=>{
+    const mid='qf_'+i;
+    const ht=getKOWinner(myKO['r16_'+a]);
+    const at=getKOWinner(myKO['r16_'+b]);
+    const htLabel=ht||('Vinnare ÅF '+(a+1));
+    const atLabel=at||('Vinnare ÅF '+(b+1));
+    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'qf'):null;
+    html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Kvartsfinal',readOnly,!ht||!at);
+  });
   html+=`</div>`;
   // SF
+  const SF_PAIRS=[[0,1],[2,3]];
   html+=`<div class="ko-section"><div class="stitle">Semifinaler</div>`;
-  for(let i=0;i<2;i++){const mid='sf_'+i;const ht=getKOWinner(myKO['qf_'+(i*2)]),at=getKOWinner(myKO['qf_'+(i*2+1)]);const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'sf'):null;html+=matchCard(mid,ht,at,t,res,sc,'Semifinal',readOnly);}
+  SF_PAIRS.forEach(([a,b],i)=>{
+    const mid='sf_'+i;
+    const ht=getKOWinner(myKO['qf_'+a]);
+    const at=getKOWinner(myKO['qf_'+b]);
+    const htLabel=ht||('Vinnare KV '+(a+1));
+    const atLabel=at||('Vinnare KV '+(b+1));
+    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'sf'):null;
+    html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Semifinal',readOnly,!ht||!at);
+  });
   html+=`</div>`;
   // Final
   html+=`<div class="ko-section"><div class="stitle">Final 🏆</div>`;
