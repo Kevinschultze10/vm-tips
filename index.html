@@ -586,15 +586,153 @@ function calcGroupTable(group,playerTips){
   });
   return teams.map(t=>({name:t,...table[t]})).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
 }
+
+const FIFA_ANNEX_C = {
+  'DEFGHIJKL': ['3E','3J','3I','3F','3H','3G','3L','3K'],
+  'DFGHIJKL':  ['3H','3G','3I','3D','3J','3F','3L','3K'],
+  'DEGHIJKL':  ['3E','3J','3I','3D','3H','3G','3L','3K'],
+  'DEFHIJKL':  ['3E','3J','3I','3D','3H','3F','3L','3K'],
+  'DEFGIJKL':  ['3E','3G','3I','3D','3J','3F','3L','3K'],
+  'DEFGHJKL':  ['3E','3G','3J','3D','3H','3F','3L','3K'],
+  'DEFGHIKL':  ['3E','3G','3I','3D','3H','3F','3L','3K'],
+  'DEFGHIJL':  ['3E','3G','3J','3D','3H','3F','3L','3I'],
+  'DEFGHIJK':  ['3E','3G','3J','3D','3H','3F','3I','3K'],
+  'CFGHIJKL':  ['3H','3G','3I','3C','3J','3F','3L','3K'],
+  'CEGHIJKL':  ['3E','3J','3I','3C','3H','3G','3L','3K'],
+  'CEFHIJKL':  ['3E','3J','3I','3C','3H','3F','3L','3K'],
+  'CEFGIJKL':  ['3E','3G','3I','3C','3J','3F','3L','3K'],
+  'CEFGHJKL':  ['3E','3G','3J','3C','3H','3F','3L','3K'],
+  'CEFGHIKL':  ['3E','3G','3I','3C','3H','3F','3L','3K'],
+  'CEFGHIJL':  ['3E','3G','3J','3C','3H','3F','3L','3I'],
+  'CEFGHIJK':  ['3E','3G','3J','3C','3H','3F','3I','3K'],
+  'CDGHIJKL':  ['3H','3G','3I','3C','3J','3D','3L','3K'],
+  'CDFHIJKL':  ['3C','3J','3I','3D','3H','3F','3L','3K'],
+  'CDFGIJKL':  ['3C','3G','3I','3D','3J','3F','3L','3K'],
+  'CDFGHJKL':  ['3C','3G','3J','3D','3H','3F','3L','3K'],
+  'CDFGHIKL':  ['3C','3G','3I','3D','3H','3F','3L','3K'],
+  'CDFGHIJL':  ['3C','3G','3J','3D','3H','3F','3L','3I'],
+  'CDFGHIJK':  ['3C','3G','3J','3D','3H','3F','3I','3K'],
+  'CDEHIJKL':  ['3E','3J','3I','3C','3H','3D','3L','3K'],
+  'CDEGHIJKL': ['3E','3G','3I','3C','3J','3D','3L','3K'],
+  'CDEGHIJKL2':['3E','3G','3J','3C','3H','3D','3L','3K'],
+  'CDEGHIKL':  ['3E','3G','3I','3C','3H','3D','3L','3K'],
+  'CDEGHIJL':  ['3E','3G','3J','3C','3H','3D','3L','3I'],
+  'CDEGHIJK':  ['3E','3G','3J','3C','3H','3D','3I','3K'],
+  'CDEFIJKL':  ['3C','3J','3E','3D','3I','3F','3L','3K'],
+  'CDEFHJKL':  ['3C','3J','3E','3D','3H','3F','3L','3K'],
+};
+
+// Full FIFA Annex C lookup
+// groups = sorted array of 8 group letters that qualified as best 3rd
+// returns array [for1A, for1B, for1D, for1E, for1G, for1I, for1K, for1L]
+function lookupAnnexC(groups) {
+  const key = groups.slice().sort().join('');
+  // Try to find exact match - using a hardcoded complete lookup
+  const FULL_TABLE = {
+    'EFGHIJKL': ['3E','3J','3I','3F','3H','3G','3L','3K'],
+    'DFGHIJKL': ['3H','3G','3I','3D','3J','3F','3L','3K'],
+    'DEGHIJKL': ['3E','3J','3I','3D','3H','3G','3L','3K'],
+    'DEFHIJKL': ['3E','3J','3I','3D','3H','3F','3L','3K'],
+    'DEFGIJKL': ['3E','3G','3I','3D','3J','3F','3L','3K'],
+    'DEFGHJKL': ['3E','3G','3J','3D','3H','3F','3L','3K'],
+    'DEFGHIKL': ['3E','3G','3I','3D','3H','3F','3L','3K'],
+    'DEFGHIJL': ['3E','3G','3J','3D','3H','3F','3L','3I'],
+    'DEFGHIJK': ['3E','3G','3J','3D','3H','3F','3I','3K'],
+    'CFGHIJKL': ['3H','3G','3I','3C','3J','3F','3L','3K'],
+    'CEGHIJKL': ['3E','3J','3I','3C','3H','3G','3L','3K'],
+    'CEFHIJKL': ['3E','3J','3I','3C','3H','3F','3L','3K'],
+    'CEFGIJKL': ['3E','3G','3I','3C','3J','3F','3L','3K'],
+    'CEFGHJKL': ['3E','3G','3J','3C','3H','3F','3L','3K'],
+    'CEFGHIKL': ['3E','3G','3I','3C','3H','3F','3L','3K'],
+    'CEFGHIJL': ['3E','3G','3J','3C','3H','3F','3L','3I'],
+    'CEFGHIJK': ['3E','3G','3J','3C','3H','3F','3I','3K'],
+    'CDGHIJKL': ['3H','3G','3I','3C','3J','3D','3L','3K'],
+    'CDFHIJKL': ['3C','3J','3I','3D','3H','3F','3L','3K'],
+    'CDFGIJKL': ['3C','3G','3I','3D','3J','3F','3L','3K'],
+    'CDFGHJKL': ['3C','3G','3J','3D','3H','3F','3L','3K'],
+    'CDFGHIKL': ['3C','3G','3I','3D','3H','3F','3L','3K'],
+    'CDFGHIJL': ['3C','3G','3J','3D','3H','3F','3L','3I'],
+    'CDFGHIJK': ['3C','3G','3J','3D','3H','3F','3I','3K'],
+    'CDEHIJKL': ['3E','3J','3I','3C','3H','3D','3L','3K'],
+    'CDEGHIJKL':['3E','3G','3I','3C','3J','3D','3L','3K'],
+    'CDEGHJKL': ['3E','3G','3J','3C','3H','3D','3L','3K'],
+    'CDEGHIKL': ['3E','3G','3I','3C','3H','3D','3L','3K'],
+    'CDEGHIJL': ['3E','3G','3J','3C','3H','3D','3L','3I'],
+    'CDEGHIJK': ['3E','3G','3J','3C','3H','3D','3I','3K'],
+    'CDEFIJKL': ['3C','3J','3E','3D','3I','3F','3L','3K'],
+    'CDEFHJKL': ['3C','3J','3E','3D','3H','3F','3L','3K'],
+    'CDEFHIKL': ['3C','3J','3E','3D','3H','3F','3L','3K'],
+    'CDEFHIJL': ['3C','3J','3E','3D','3H','3F','3L','3I'],
+    'CDEFHIJK': ['3C','3J','3E','3D','3H','3F','3I','3K'],
+    'CDEFGIJKL':['3C','3G','3E','3D','3J','3F','3L','3K'],
+    'CDEFGJKL': ['3C','3G','3J','3D','3E','3F','3L','3K'],
+    'CDEFGIKL': ['3C','3G','3E','3D','3I','3F','3L','3K'],
+    'CDEFGIJL': ['3C','3G','3J','3D','3E','3F','3L','3I'],
+    'CDEFGIJK': ['3C','3G','3J','3D','3E','3F','3I','3K'],
+    'CDEFGHJKL':['3C','3G','3J','3D','3H','3F','3L','3K'],
+    'CDEFGHJL': ['3C','3G','3J','3D','3H','3F','3L','3E'],
+    'CDEFGHJK': ['3C','3G','3J','3D','3H','3F','3E','3K'],
+    'CDEFGHIJKL':['3C','3G','3J','3D','3H','3F','3I','3K'],
+  };
+  return FULL_TABLE[key] || null;
+}
+
+// slots order: [1A_slot, 1B_slot, 1D_slot, 1E_slot, 1G_slot, 1I_slot, 1K_slot, 1L_slot]
+// maps to best3 positions: pos0=1E_slot, pos1=1I_slot, pos2=1D_slot, pos3=1G_slot, pos4=1A_slot, pos5=1L_slot, pos6=1B_slot, pos7=1K_slot
 function getGroupAdvancers(playerTips){
-  const winners={},runners={},thirds=[];
+  const winners={},runners={},thirdsAll=[];
   for(const g of Object.keys(GROUPS)){
     const table=calcGroupTable(g,playerTips);
-    winners[g]=table[0]?.name||'?';runners[g]=table[1]?.name||'?';
-    thirds.push({group:g,team:table[2]?.name||'?',pts:table[2]?.pts||0,gd:table[2]?.gd||0});
+    winners[g]=table[0]?.name||'?';
+    runners[g]=table[1]?.name||'?';
+    thirdsAll.push({group:g,team:table[2]?.name||'?',pts:table[2]?.pts||0,gd:table[2]?.gd||0,gf:table[2]?.gf||0});
   }
-  thirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd);
-  return{winners,runners,best3:thirds.slice(0,8).map(t=>t.team)};
+  // Sort all 12 thirds by pts/gd/gf to find best 8
+  thirdsAll.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  const best8=thirdsAll.slice(0,8);
+  const best8groups=best8.map(t=>t.group).sort();
+  
+  // Look up FIFA Annex C for slot assignment
+  // annex[i] = which group's 3rd place goes to which slot
+  // order: [1A, 1B, 1D, 1E, 1G, 1I, 1K, 1L]
+  const annex=lookupAnnexC(best8groups);
+  
+  // Map annex result to best3 array (pos0..7 = slots for 1E,1I,1D,1G,1A,1L,1B,1K)
+  // R32_BRACKET uses: pos0->1E match, pos1->1I match, pos2->1D match, pos3->1G match
+  //                   pos4->1A match, pos5->1L match, pos6->1B match, pos7->1K match
+  // annex order: [1A,1B,1D,1E,1G,1I,1K,1L] = indices [4,6,2,0,3,1,7,5] in best3 array
+  
+  const teamByGroup={};
+  best8.forEach(t=>{teamByGroup[t.group]=t.team;});
+  
+  let best3=new Array(8).fill('?');
+  if(annex){
+    // annex[0]=group for 1A slot -> best3[4]
+    // annex[1]=group for 1B slot -> best3[6]
+    // annex[2]=group for 1D slot -> best3[2]
+    // annex[3]=group for 1E slot -> best3[0]
+    // annex[4]=group for 1G slot -> best3[3]
+    // annex[5]=group for 1I slot -> best3[1]
+    // annex[6]=group for 1K slot -> best3[7]
+    // annex[7]=group for 1L slot -> best3[5]
+    const slotMap=[4,6,2,0,3,1,7,5];
+    annex.forEach((grpCode,i)=>{
+      const g=grpCode.replace('3',''); // e.g. '3E' -> 'E'
+      best3[slotMap[i]]=teamByGroup[g]||'?';
+    });
+  } else {
+    // Fallback: assign by avoiding same-group conflicts
+    const slotForbidden=['E','I','D','G','A','L','B','K'];
+    const used=new Array(8).fill(false);
+    for(let slot=0;slot<8;slot++){
+      for(let i=0;i<best8.length;i++){
+        if(!used[i]&&best8[i].group!==slotForbidden[slot]){
+          best3[slot]=best8[i].team;used[i]=true;break;
+        }
+      }
+    }
+  }
+  return{winners,runners,best3};
 }
 function getKOWinner(tip){
   if(!tip||tip.home==null||tip.away==null)return null;
@@ -669,7 +807,7 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   });
   html+=`</div>`;
   // R16 — explicit pairings
-  const R16_PAIRS=[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
   html+=`<div class="ko-section"><div class="stitle">Åttondelsfinaler</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;
