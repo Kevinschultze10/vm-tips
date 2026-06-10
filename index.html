@@ -221,6 +221,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
 
     <!-- SLUTSPEL -->
     <div id="s-ko" class="screen">
+      <div class="cd-locked-banner" id="deadlineBannerKO" style="display:none">🔒 Deadline passerad — slutspelstips är låsta.</div>
       <div class="ko-info"><strong>Ditt eget slutspelsträd!</strong> Baserat på dina grupptips räknar vi ut vilka lag som möts. Tippa resultaten hela vägen till finalen!</div>
       <div id="koTree"></div>
     </div>
@@ -474,7 +475,7 @@ function go(name){
   const idx={tips:0,ko:1,q:2,lb:3,rules:4,admin:5};
   document.querySelectorAll('.nb')[idx[name]]?.classList.add('active');
   if(name==='tips')renderGM();
-  if(name==='ko')renderKOTree();
+  if(name==='ko')renderKOTree(null,null,isPastDeadline());
   if(name==='q')renderQ();
   if(name==='lb')renderLB();
   if(name==='admin')renderAdmin();
@@ -873,6 +874,7 @@ function setKOTPen(id,val,ht,at){
   koTips[id].homeTeam=ht;koTips[id].awayTeam=at;
 }
 async function saveKOTips(){
+  if(isPastDeadline()){flash('🔒 Deadline passerad — kan inte spara',false);return;}
   const ups=[];
   for(const[mid,s] of Object.entries(koTips))if(s.home!=null&&s.away!=null)ups.push({player_id:player.id,match_id:mid,home_score:s.home,away_score:s.away,home_team:s.homeTeam,away_team:s.awayTeam,pen_winner:s.penWinner||null,updated_at:new Date().toISOString()});
   if(!ups.length){flash('Inget att spara',false);return;}
@@ -1108,11 +1110,19 @@ function lockAfterDeadline(){
   document.querySelectorAll('#gmGrid .mc').forEach(m=>m.classList.add('locked'));
   // Lock questions
   document.querySelectorAll('.q-inp').forEach(i=>{i.disabled=true;i.classList.add('locked');});
+  // Lock KO tips
+  document.querySelectorAll('#koTree input').forEach(i=>i.disabled=true);
+  document.querySelectorAll('#koTree select').forEach(i=>i.disabled=true);
+  document.querySelectorAll('#koTree .mc').forEach(m=>m.classList.add('locked'));
+  // Hide save button in KO
+  document.querySelectorAll('#koTree .btn').forEach(b=>b.style.display='none');
   // Show locked banners
   const grpBanner = document.getElementById('deadlineBannerGrp');
   const qBanner = document.getElementById('deadlineBannerQ');
+  const koBanner = document.getElementById('deadlineBannerKO');
   if(grpBanner) grpBanner.style.display='block';
   if(qBanner) qBanner.style.display='block';
+  if(koBanner) koBanner.style.display='block';
 }
 
 
