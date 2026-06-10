@@ -814,10 +814,10 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
     const mid='r16_'+i;
     const ht=getKOWinner(myKO['r32_'+a]);
     const at=getKOWinner(myKO['r32_'+b]);
-    // If TBD, show helpful label
     const htLabel = ht || ('Vinnare match '+(a+1));
     const atLabel = at || ('Vinnare match '+(b+1));
-    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'r16'):null;
+    const t={...myKO[mid]||{},homeTeam:ht||myKO[mid]?.homeTeam,awayTeam:at||myKO[mid]?.awayTeam};
+    const res=results[mid],sc=res?ptsKO(t,res,'r16'):null;
     html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Åttondelsfinaler',readOnly,!ht||!at);
   });
   html+=`</div>`;
@@ -830,7 +830,8 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
     const at=getKOWinner(myKO['r16_'+b]);
     const htLabel=ht||('Vinnare ÅF '+(a+1));
     const atLabel=at||('Vinnare ÅF '+(b+1));
-    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'qf'):null;
+    const t={...myKO[mid]||{},homeTeam:ht||myKO[mid]?.homeTeam,awayTeam:at||myKO[mid]?.awayTeam};
+    const res=results[mid],sc=res?ptsKO(t,res,'qf'):null;
     html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Kvartsfinal',readOnly,!ht||!at);
   });
   html+=`</div>`;
@@ -843,17 +844,26 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
     const at=getKOWinner(myKO['qf_'+b]);
     const htLabel=ht||('Vinnare KV '+(a+1));
     const atLabel=at||('Vinnare KV '+(b+1));
-    const t=myKO[mid]||{},res=results[mid],sc=res?ptsKO(t,res,'sf'):null;
+    const t={...myKO[mid]||{},homeTeam:ht||myKO[mid]?.homeTeam,awayTeam:at||myKO[mid]?.awayTeam};
+    const res=results[mid],sc=res?ptsKO(t,res,'sf'):null;
     html+=matchCard(mid,htLabel,atLabel,t,res,sc,'Semifinal',readOnly,!ht||!at);
   });
   html+=`</div>`;
   // Final
   html+=`<div class="ko-section"><div class="stitle">Final 🏆</div>`;
-  const fm='fin_0',fh=getKOWinner(myKO['sf_0']),fa=getKOWinner(myKO['sf_1']),ft=myKO[fm]||{},fr=results[fm],fs=fr?ptsKO(ft,fr,'fin'):null;
+  const fm='fin_0';
+  const fh=getKOWinner(myKO['sf_0']);
+  const fa=getKOWinner(myKO['sf_1']);
+  const ft={...myKO[fm]||{},homeTeam:fh,awayTeam:fa};
+  const fr=results[fm],fs=fr?ptsKO(ft,fr,'fin'):null;
   html+=matchCard(fm,fh,fa,ft,fr,fs,'Final',readOnly);html+=`</div>`;
   // Bronze
   html+=`<div class="ko-section"><div class="stitle">Bronsmatch</div>`;
-  const bm='3rd_0',bh=getKOLoser(myKO['sf_0']),ba=getKOLoser(myKO['sf_1']),bt=myKO[bm]||{},br=results[bm],bs=br?ptsKO(bt,br,'3rd'):null;
+  const bm='3rd_0';
+  const bh=getKOLoser(myKO['sf_0']);
+  const ba=getKOLoser(myKO['sf_1']);
+  const bt={...myKO[bm]||{},homeTeam:bh,awayTeam:ba};
+  const br=results[bm],bs=br?ptsKO(bt,br,'3rd'):null;
   html+=matchCard(bm,bh,ba,bt,br,bs,'Bronsmatch',readOnly);html+=`</div>`;
   if(!readOnly)html+=`<div style="margin-top:1.5rem;display:flex;justify-content:flex-end"><button class="btn" onclick="saveKOTips()">Spara slutspelstips</button></div>`;
   wrap.innerHTML=html;
