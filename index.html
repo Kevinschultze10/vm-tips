@@ -214,7 +214,7 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <button class="btn" onclick="saveTips()">Spara tips</button>
       </div>
       <p style="font-size:.82rem;color:var(--tm);margin-bottom:.85rem;line-height:1.6"><strong style="color:var(--t)">+3p</strong> exakt rätt resultat &nbsp;·&nbsp; <strong style="color:var(--t)">+1p</strong> rätt vinnare/oavgjort</p>
-      <div class="cd-locked-banner" id="deadlineBannerGrp" style="display:none">🔒 Deadline passerad — tips är låsta. VM startade 11 juni!</div>
+      <div class="cd-locked-banner" id="deadlineBannerGrp" style="display:none">🔒 Deadline passerad — tips är låsta!</div>
       <div class="stitle" style="margin-top:0">Gruppspel <span>/ 48 matcher</span></div>
       <div class="groups-layout" id="gmGrid"></div>
     </div>
@@ -951,7 +951,7 @@ async function renderLB(){
 
   document.getElementById('lbtable').innerHTML=`
     <thead><tr><td class="lbr">#</td><td>Spelare</td><td class="lbp">Poäng</td><td class="lbb">Exakt · Vinnare</td></tr></thead>
-    <tbody>${lb.map((p,i)=>`<tr onclick="openSpy('${p.id}','${p.name}',${JSON.stringify(p.mt).replace(/'/g,"\\'")})" ${p.id===player?.id?'style="background:var(--s2)"':''}>
+    <tbody>${lb.map((p,i)=>`<tr onclick="openSpy('${p.id}')" style="cursor:pointer;${p.id===player?.id?'background:var(--s2)':''}">
       <td class="lbr">${i+1}</td>
       <td>${p.name}${p.id===player?.id?' <span style="font-size:.63rem;color:var(--tm)">(du)</span>':''} <span style="font-size:.65rem;color:var(--tm)">👁</span></td>
       <td class="lbp">${p.tp}</td>
@@ -963,14 +963,14 @@ async function renderLB(){
 }
 
 // ── SPY MODAL ──
-async function openSpy(pid,pname,mt){
+async function openSpy(pid){
   if(!isPastDeadline() && pid !== player?.id){
-    flash('👁 Andras tips visas efter deadline — 11 juni!', false);
+    flash('👁 Andras tips visas efter kl 18:00 idag!', false);
     return;
   }
   const p=window._lbPlayers?.find(x=>x.id===pid);
   if(!p)return;
-  document.getElementById('spyName').textContent=pname+'s tips';
+  document.getElementById('spyName').textContent=p.name+'s tips';
   const modal=document.getElementById('spyModal');
   modal.classList.add('open');
 
@@ -1086,7 +1086,7 @@ async function makeAdmin(id){await sb.from('players').update({is_admin:true}).eq
 
 
 // ── DEADLINE ──
-const DEADLINE = new Date('2026-06-10T23:59:00+02:00'); // Swedish time (CEST)
+const DEADLINE = new Date('2026-06-11T18:00:00+02:00'); // Swedish time (CEST)
 
 function isPastDeadline(){
   return new Date() > DEADLINE;
@@ -1098,7 +1098,7 @@ function updateCountdown(){
   const now = new Date();
   const diff = DEADLINE - now;
   if(diff <= 0){
-    wrap.innerHTML = '<div class="cd-done">⏰ Deadline passerad — 11 Juni har VM-tipset startat!</div>';
+    wrap.innerHTML = '<div class="cd-done">⏰ Deadline passerad — tips är låsta!</div>';
     return;
   }
   const days = Math.floor(diff / 86400000);
