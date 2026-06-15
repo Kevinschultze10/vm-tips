@@ -1105,7 +1105,7 @@ async function makeAdmin(id){await sb.from('players').update({is_admin:true}).eq
 
 
 // ── DEADLINE ──
-const DEADLINE = new Date('2026-06-15T00:00:00+02:00'); // Swedish time (CEST)
+const DEADLINE = new Date('2026-06-15T23:59:00+02:00'); // Swedish time (CEST)
 
 function isPastDeadline(){
   return new Date() > DEADLINE;
