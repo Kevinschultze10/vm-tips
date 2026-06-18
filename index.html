@@ -462,9 +462,9 @@ async function loadResults(){const{data}=await sb.from('results').select('*');re
 async function loadKOtips(){const{data}=await sb.from('ko_tips').select('*').eq('player_id',player.id);koTips={};(data||[]).forEach(t=>{koTips[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team,penWinner:t.pen_winner||''};});}
 async function loadQTips(){const{data}=await sb.from('q_tips').select('*').eq('player_id',player.id);qTips={};(data||[]).forEach(t=>{qTips[t.question_id]=t.answer;});}
 async function loadQAnswers(){const{data}=await sb.from('q_answers').select('*');qAnswers={};(data||[]).forEach(a=>{qAnswers[a.question_id]=a.answer;});}
-async function loadAllTips(){const{data}=await sb.from('tips').select('*');return data||[];}
-async function loadAllKOTips(){const{data}=await sb.from('ko_tips').select('*');return data||[];}
-async function loadAllQTips(){const{data}=await sb.from('q_tips').select('*');return data||[];}
+async function loadAllTips(){const{data,error}=await sb.from('tips').select('*').limit(5000);if(error)console.error('loadAllTips error:',error);return data||[];}
+async function loadAllKOTips(){const{data,error}=await sb.from('ko_tips').select('*').limit(5000);if(error)console.error('loadAllKOTips error:',error);return data||[];}
+async function loadAllQTips(){const{data,error}=await sb.from('q_tips').select('*').limit(5000);if(error)console.error('loadAllQTips error:',error);return data||[];}
 async function loadPlayers(){const{data}=await sb.from('players').select('*').order('created_at');return data||[];}
 
 // ── SCREEN ──
