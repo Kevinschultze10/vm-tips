@@ -968,7 +968,7 @@ async function renderLB(){
     let tp=0,ex=0,wi=0;
     const mt={};allTips.filter(t=>t.player_id===p.id).forEach(t=>{mt[t.match_id]={home:t.home_score,away:t.away_score};});
     GM.forEach(m=>{const sc=pts(mt[m.id],results[m.id]);if(sc){tp+=sc.p;if(sc.t==='x')ex++;else if(sc.t==='w')wi++;}});
-    const komt={};allKOTips.filter(t=>t.player_id===p.id).forEach(t=>{komt[t.match_id]={home:t.home_score,away:t.away_score};});
+    const komt={};allKOTips.filter(t=>t.player_id===p.id).forEach(t=>{komt[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team,penWinner:t.pen_winner||''};});
     Object.keys(komt).forEach(mid=>{const round=mid.split('_')[0];const sc=ptsKO(komt[mid],results[mid],round);if(sc){tp+=sc.p;if(sc.t==='x')ex++;else if(sc.t==='w')wi++;}});
     const pqt={};allQTips.filter(t=>t.player_id===p.id).forEach(t=>{pqt[t.question_id]=t.answer;});
     QUESTIONS.forEach(q=>{if(qAnswers[q.id]&&pqt[q.id]&&pqt[q.id].toLowerCase().trim()===qAnswers[q.id].toLowerCase().trim())tp+=q.pts;});
