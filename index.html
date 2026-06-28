@@ -458,7 +458,7 @@ async function startSession(){
 
 // ── DATA ──
 async function loadTips(){const{data}=await sb.from('tips').select('*').eq('player_id',player.id);tips={};(data||[]).forEach(t=>{tips[t.match_id]={home:t.home_score,away:t.away_score};});}
-async function loadResults(){const{data}=await sb.from('results').select('*');results={};(data||[]).forEach(r=>{results[r.match_id]={home:r.home_score,away:r.away_score};});}
+async function loadResults(){const{data}=await sb.from('results').select('*');results={};(data||[]).forEach(r=>{results[r.match_id]={home:r.home_score,away:r.away_score,real_home:r.real_home,real_away:r.real_away,pen_winner:r.pen_winner};});}
 async function loadKOtips(){const{data}=await sb.from('ko_tips').select('*').eq('player_id',player.id);koTips={};(data||[]).forEach(t=>{koTips[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team,penWinner:t.pen_winner||''};});}
 async function loadQTips(){const{data}=await sb.from('q_tips').select('*').eq('player_id',player.id);qTips={};(data||[]).forEach(t=>{qTips[t.question_id]=t.answer;});}
 async function loadQAnswers(){const{data}=await sb.from('q_answers').select('*');qAnswers={};(data||[]).forEach(a=>{qAnswers[a.question_id]=a.answer;});}
@@ -1127,12 +1127,25 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 // ── ADMIN ──
 let pending={};
 function setR(mid,side,val){if(!pending[mid])pending[mid]={...results[mid]||{}};pending[mid][side]=val===''?null:parseInt(val);}
-async function confirmR(mid){
+async function confirmR(mid,realHome,realAway){
   const r=pending[mid]||results[mid];
   if(!r||r.home==null||r.away==null){alert('Ange båda resultaten');return;}
-  const{error}=await sb.from('results').upsert({match_id:mid,home_score:r.home,away_score:r.away,updated_at:new Date().toISOString()},{onConflict:'match_id'});
+  let penWinner=r.pen_winner||null;
+  if(r.home===r.away && (realHome||realAway)){
+    const choice=prompt('Oavgjort! Vilket lag vinner på straffar?\n1: '+realHome+'\n2: '+realAway);
+    if(choice==='1')penWinner=realHome;
+    else if(choice==='2')penWinner=realAway;
+    else if(choice){alert('Avbrutet — välj 1 eller 2');return;}
+  }
+  const payload={match_id:mid,home_score:r.home,away_score:r.away,updated_at:new Date().toISOString()};
+  if(realHome)payload.real_home=realHome;
+  if(realAway)payload.real_away=realAway;
+  if(penWinner)payload.pen_winner=penWinner;
+  const{error}=await sb.from('results').upsert(payload,{onConflict:'match_id'});
   if(error){alert('Fel: '+error.message);return;}
-  results[mid]=r;flash('✓ Resultat sparat');
+  results[mid]={...r,real_home:realHome,real_away:realAway,pen_winner:penWinner};
+  flash('✓ Resultat sparat');
+  renderAdmin();
 }
 
 let pendingQ={};
@@ -1157,18 +1170,122 @@ async function renderAdmin(){
         <div class="tn">${m.away}</div><button class="btn btn-sm" onclick="confirmR('${m.id}')">OK</button></div>`;
     });
   }
-  // KO results
-  const koRounds=['r32','r16','qf','sf','fin','3rd'];
-  const koCounts={r32:16,r16:8,qf:4,sf:2,fin:1,'3rd':1};
+  // KO results — show ACTUAL teams based on real group results
   const koNames={r32:'Sextondelsfinal',r16:'Åttondelsfinaler',qf:'Kvartsfinaler',sf:'Semifinaler',fin:'Final','3rd':'Bronsmatch'};
-  koRounds.forEach(round=>{
-    h+=`<div class="glabel" style="margin-top:.9rem">${koNames[round]}</div>`;
-    for(let i=0;i<koCounts[round];i++){const mid=round+'_'+i;const r=results[mid]||{};
-      h+=`<div class="am"><div class="tn" style="text-align:right;font-size:.78rem;color:var(--tm)">Match ${i+1}</div>
-        <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-        <div class="tn" style="font-size:.78rem;color:var(--tm)">${koNames[round]}</div><button class="btn btn-sm" onclick="confirmR('${mid}')">OK</button></div>`;
-    }
+
+  // Build actual group standings from real results (not player tips)
+  const actualTips={};
+  GM.forEach(m=>{
+    const r=results[m.id];
+    if(r&&r.home!=null&&r.away!=null)actualTips[m.id]={home:r.home,away:r.away};
   });
+  const actualAdv=getGroupAdvancers(actualTips);
+
+  function getActualKOWinner(roundResults,mid){
+    const r=roundResults[mid];
+    if(!r||r.home==null||r.away==null)return null;
+    if(r.home===r.away)return r.pen_winner||null;
+    return r.home>r.away?r.home_team_real:r.away_team_real;
+  }
+
+  // R32 — assign team names from actual standings
+  const r32Teams=[];
+  R32_BRACKET.forEach((slots,i)=>{
+    const ht=slots[0].type==='winner'?actualAdv.winners[slots[0].group]:slots[0].type==='runner'?actualAdv.runners[slots[0].group]:actualAdv.best3[slots[0].pos];
+    const at=slots[1].type==='winner'?actualAdv.winners[slots[1].group]:slots[1].type==='runner'?actualAdv.runners[slots[1].group]:actualAdv.best3[slots[1].pos];
+    r32Teams.push({home:ht,away:at});
+  });
+
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r32}</div>`;
+  r32Teams.forEach((teams,i)=>{
+    const mid='r32_'+i;const r=results[mid]||{};
+    const htDisplay=teams.home||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=teams.away||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(teams.home)},${JSON.stringify(teams.away)})">OK</button></div>`;
+  });
+
+  // Helper to get winner/loser of a round using stored real_home_team/real_away_team in results
+  function realWinner(mid){
+    const r=results[mid];
+    if(!r||r.home==null||r.away==null)return null;
+    if(r.home===r.away)return r.pen_winner||null;
+    return r.home>r.away?r.real_home:r.real_away;
+  }
+  function realLoser(mid){
+    const r=results[mid];
+    if(!r||r.home==null||r.away==null)return null;
+    if(r.home===r.away){
+      if(!r.pen_winner)return null;
+      return r.pen_winner===r.real_home?r.real_away:r.real_home;
+    }
+    return r.home<r.away?r.real_home:r.real_away;
+  }
+
+  // R16
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r16}</div>`;
+  R16_PAIRS.forEach(([a,b],i)=>{
+    const mid='r16_'+i;const r=results[mid]||{};
+    const ht=realWinner('r32_'+a), at=realWinner('r32_'+b);
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+  });
+
+  // QF
+  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames.qf}</div>`;
+  QF_PAIRS.forEach(([a,b],i)=>{
+    const mid='qf_'+i;const r=results[mid]||{};
+    const ht=realWinner('r16_'+a), at=realWinner('r16_'+b);
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+  });
+
+  // SF
+  const SF_PAIRS=[[0,1],[2,3]];
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames.sf}</div>`;
+  SF_PAIRS.forEach(([a,b],i)=>{
+    const mid='sf_'+i;const r=results[mid]||{};
+    const ht=realWinner('qf_'+a), at=realWinner('qf_'+b);
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+  });
+
+  // Final
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames.fin}</div>`;
+  {
+    const mid='fin_0';const r=results[mid]||{};
+    const ht=realWinner('sf_0'), at=realWinner('sf_1');
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+  }
+
+  // Bronze
+  h+=`<div class="glabel" style="margin-top:.9rem">${koNames['3rd']}</div>`;
+  {
+    const mid='3rd_0';const r=results[mid]||{};
+    const ht=realLoser('sf_0'), at=realLoser('sf_1');
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
+      <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+  }
+
   document.getElementById('adminGrp').innerHTML=h;
 
   // Questions admin
