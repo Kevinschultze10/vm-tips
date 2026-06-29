@@ -1127,6 +1127,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 // ── ADMIN ──
 let pending={};
 function setR(mid,side,val){if(!pending[mid])pending[mid]={...results[mid]||{}};pending[mid][side]=val===''?null:parseInt(val);}
+async function confirmRFromMap(mid){
+  const teams=window._matchTeamMap?.[mid]||{};
+  await confirmR(mid, teams.home, teams.away);
+}
 async function confirmR(mid,realHome,realAway){
   const r=pending[mid]||results[mid];
   if(!r||r.home==null||r.away==null){alert('Ange båda resultaten');return;}
@@ -1160,6 +1164,7 @@ async function confirmQA(id){
 async function renderAdmin(){
   if(!player?.is_admin){document.getElementById('adminGrp').innerHTML='<p style="color:var(--tm);font-size:.85rem;line-height:1.7">Gå till Supabase → Table Editor → players → sätt <strong style="color:var(--t)">is_admin = true</strong> → ladda om.</p>';document.getElementById('adminPlayers').innerHTML='';document.getElementById('adminQ').innerHTML='';return;}
   await Promise.all([loadResults(),loadQAnswers()]);
+  window._matchTeamMap=window._matchTeamMap||{};
   const byG={};GM.forEach(m=>{if(!byG[m.group])byG[m.group]=[];byG[m.group].push(m);});
   let h='';
   for(const[g,ms] of Object.entries(byG)){
@@ -1199,11 +1204,12 @@ async function renderAdmin(){
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r32}</div>`;
   r32Teams.forEach((teams,i)=>{
     const mid='r32_'+i;const r=results[mid]||{};
+    window._matchTeamMap[mid]={home:teams.home,away:teams.away};
     const htDisplay=teams.home||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=teams.away||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(teams.home)},${JSON.stringify(teams.away)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
   // Helper to get winner/loser of a round using stored real_home_team/real_away_team in results
@@ -1229,11 +1235,12 @@ async function renderAdmin(){
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;const r=results[mid]||{};
     const ht=realWinner('r32_'+a), at=realWinner('r32_'+b);
+    window._matchTeamMap[mid]={home:ht,away:at};
     const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
   // QF
@@ -1242,11 +1249,12 @@ async function renderAdmin(){
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;const r=results[mid]||{};
     const ht=realWinner('r16_'+a), at=realWinner('r16_'+b);
+    window._matchTeamMap[mid]={home:ht,away:at};
     const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
   // SF
@@ -1255,11 +1263,12 @@ async function renderAdmin(){
   SF_PAIRS.forEach(([a,b],i)=>{
     const mid='sf_'+i;const r=results[mid]||{};
     const ht=realWinner('qf_'+a), at=realWinner('qf_'+b);
+    window._matchTeamMap[mid]={home:ht,away:at};
     const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
   // Final
@@ -1267,11 +1276,12 @@ async function renderAdmin(){
   {
     const mid='fin_0';const r=results[mid]||{};
     const ht=realWinner('sf_0'), at=realWinner('sf_1');
+    window._matchTeamMap[mid]={home:ht,away:at};
     const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   }
 
   // Bronze
@@ -1279,11 +1289,12 @@ async function renderAdmin(){
   {
     const mid='3rd_0';const r=results[mid]||{};
     const ht=realLoser('sf_0'), at=realLoser('sf_1');
+    window._matchTeamMap[mid]={home:ht,away:at};
     const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
-      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmR('${mid}',${JSON.stringify(ht)},${JSON.stringify(at)})">OK</button></div>`;
+      <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   }
 
   document.getElementById('adminGrp').innerHTML=h;
