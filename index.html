@@ -382,21 +382,35 @@ function ptsKO(tip,res,round){
   const lp=KO_ROUND_PTS[round]||1;
   if(!tip||tip.home==null)return{p:0,t:'none'};
   const th=+tip.home,ta=+tip.away,rh=+res.home,ra=+res.away;
-  // Exact result after 120 min
-  if(th===rh&&ta===ra){
-    // If drawn, also check pen winner matches res pen winner
-    if(th===ta){
-      const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
-      return penMatch?{p:lp*2+3,t:'x',lp}:{p:lp,t:'w',lp}; // still get team pts if right draw
-    }
-    return{p:lp*2+3,t:'x',lp};
-  }
-  // Right winner (including via penalties)
+
+  // Determine the WINNING TEAM in tip and in actual result
   const tipWinner = th>ta?tip.homeTeam:(th<ta?tip.awayTeam:(tip.penWinner||null));
-  const resWinner = rh>ra?'h':(rh<ra?'a':'pen');
-  const resWinTeam = rh>ra?res.homeTeam:(rh<ra?res.awayTeam:(res.penWinner||null));
-  if(tipWinner && resWinTeam && tipWinner===resWinTeam)return{p:lp,t:'w',lp};
-  return{p:0,t:'l'};
+  const resWinner = rh>ra?res.homeTeam:(rh<ra?res.awayTeam:(res.penWinner||null));
+
+  // No points at all if the winning team doesn't match (wrong team advancing)
+  if(!tipWinner||!resWinner||tipWinner!==resWinner)return{p:0,t:'l'};
+
+  // Right team advances — now check if it's also the exact same MATCH (same two teams)
+  // and exact same scoreline for the +3 bonus
+  const sameMatch = tip.homeTeam && tip.awayTeam && res.homeTeam && res.awayTeam &&
+    ((tip.homeTeam===res.homeTeam && tip.awayTeam===res.awayTeam) ||
+     (tip.homeTeam===res.awayTeam && tip.awayTeam===res.homeTeam));
+
+  if(sameMatch){
+    // Check exact scoreline match (accounting for home/away orientation)
+    const scoresMatch = (tip.homeTeam===res.homeTeam)
+      ? (th===rh && ta===ra)
+      : (th===ra && ta===rh);
+    if(scoresMatch){
+      if(th===ta){
+        const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
+        return penMatch?{p:lp*2+3,t:'x',lp}:{p:lp,t:'w',lp};
+      }
+      return{p:lp*2+3,t:'x',lp};
+    }
+  }
+  // Right team won, but not the exact match/scoreline — just team points
+  return{p:lp,t:'w',lp};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
@@ -458,7 +472,7 @@ async function startSession(){
 
 // ── DATA ──
 async function loadTips(){const{data}=await sb.from('tips').select('*').eq('player_id',player.id);tips={};(data||[]).forEach(t=>{tips[t.match_id]={home:t.home_score,away:t.away_score};});}
-async function loadResults(){const{data}=await sb.from('results').select('*');results={};(data||[]).forEach(r=>{results[r.match_id]={home:r.home_score,away:r.away_score,real_home:r.real_home,real_away:r.real_away,pen_winner:r.pen_winner};});}
+async function loadResults(){const{data}=await sb.from('results').select('*');results={};(data||[]).forEach(r=>{results[r.match_id]={home:r.home_score,away:r.away_score,homeTeam:r.real_home,awayTeam:r.real_away,penWinner:r.pen_winner,real_home:r.real_home,real_away:r.real_away,pen_winner:r.pen_winner};});}
 async function loadKOtips(){const{data}=await sb.from('ko_tips').select('*').eq('player_id',player.id);koTips={};(data||[]).forEach(t=>{koTips[t.match_id]={home:t.home_score,away:t.away_score,homeTeam:t.home_team,awayTeam:t.away_team,penWinner:t.pen_winner||''};});}
 async function loadQTips(){const{data}=await sb.from('q_tips').select('*').eq('player_id',player.id);qTips={};(data||[]).forEach(t=>{qTips[t.question_id]=t.answer;});}
 async function loadQAnswers(){const{data}=await sb.from('q_answers').select('*');qAnswers={};(data||[]).forEach(a=>{qAnswers[a.question_id]=a.answer;});}
