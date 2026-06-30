@@ -266,12 +266,12 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <h3>🏆 Slutspel — poäng per runda</h3>
         <p style="margin-bottom:.5rem">Varje spelares slutspelsträd byggs automatiskt från deras egna grupptips. Poäng ges baserat på vilken runda det är:</p>
         <table class="pts-table">
-          <tr><td>Sextondelsfinal → Åttondelsfinal</td><td>+1p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Åttondelsfinal → Kvartsfinal</td><td>+2p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Kvartsfinal → Semifinal</td><td>+3p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Semifinal → Final</td><td>+4p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Final (VM-vinnaren)</td><td>+5p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Bronsmatch</td><td>+4p per rätt lag, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Sextondelsfinal</td><td>Rätt resultat: 3p+1p=4p · Rätt vinnare: 1p+1p=2p</td></tr>
+          <tr><td>Åttondelsfinal</td><td>Rätt resultat: 3p+2p=5p · Rätt vinnare: 1p+2p=3p</td></tr>
+          <tr><td>Kvartsfinal</td><td>Rätt resultat: 3p+3p=6p · Rätt vinnare: 1p+3p=4p</td></tr>
+          <tr><td>Semifinal</td><td>Rätt resultat: 3p+4p=7p · Rätt vinnare: 1p+4p=5p</td></tr>
+          <tr><td>Final</td><td>Rätt resultat: 3p+5p=8p · Rätt vinnare: 1p+5p=6p</td></tr>
+          <tr><td>Bronsmatch</td><td>Rätt resultat: 3p+4p=7p · Rätt vinnare: 1p+4p=5p</td></tr>
         </table>
         <p style="margin-top:.75rem">Exempel: Tippar du rätt vinnare OCH förlorare i finalen = <strong>10p</strong>. Exakt rätt resultat också = <strong>13p</strong>!</p>
       </div>
@@ -379,7 +379,7 @@ function pts(tip,res){
 }
 function ptsKO(tip,res,round){
   if(!res||res.home==null)return null;
-  const lp=KO_ROUND_PTS[round]||1;
+  const advPts=KO_ROUND_PTS[round]||1; // points for advancing from this round
   if(!tip||tip.home==null)return{p:0,t:'none'};
   const th=+tip.home,ta=+tip.away,rh=+res.home,ra=+res.away;
 
@@ -390,27 +390,28 @@ function ptsKO(tip,res,round){
   // No points at all if the winning team doesn't match (wrong team advancing)
   if(!tipWinner||!resWinner||tipWinner!==resWinner)return{p:0,t:'l'};
 
-  // Right team advances — now check if it's also the exact same MATCH (same two teams)
-  // and exact same scoreline for the +3 bonus
+  // Right team wins/advances — base points: 1p for right winner + advPts for advancing
+  const basePts = 1 + advPts;
+
+  // Check if it's also the exact same MATCH (same two teams) and exact same scoreline for the +3 bonus
   const sameMatch = tip.homeTeam && tip.awayTeam && res.homeTeam && res.awayTeam &&
     ((tip.homeTeam===res.homeTeam && tip.awayTeam===res.awayTeam) ||
      (tip.homeTeam===res.awayTeam && tip.awayTeam===res.homeTeam));
 
   if(sameMatch){
-    // Check exact scoreline match (accounting for home/away orientation)
     const scoresMatch = (tip.homeTeam===res.homeTeam)
       ? (th===rh && ta===ra)
       : (th===ra && ta===rh);
     if(scoresMatch){
       if(th===ta){
         const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
-        return penMatch?{p:lp*2+3,t:'x',lp}:{p:lp,t:'w',lp};
+        return penMatch?{p:basePts+3,t:'x',lp:advPts}:{p:basePts,t:'w',lp:advPts};
       }
-      return{p:lp*2+3,t:'x',lp};
+      return{p:basePts+3,t:'x',lp:advPts};
     }
   }
-  // Right team won, but not the exact match/scoreline — just team points
-  return{p:lp,t:'w',lp};
+  // Right team won, but not the exact match/scoreline — base points only
+  return{p:basePts,t:'w',lp:advPts};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
