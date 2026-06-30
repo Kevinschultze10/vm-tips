@@ -266,12 +266,12 @@ main{position:relative;max-width:980px;margin:0 auto;padding:1.75rem 1.25rem;z-i
         <h3>🏆 Slutspel — poäng per runda</h3>
         <p style="margin-bottom:.5rem">Varje spelares slutspelsträd byggs automatiskt från deras egna grupptips. Poäng ges baserat på vilken runda det är:</p>
         <table class="pts-table">
-          <tr><td>Sextondelsfinal</td><td>+1p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Åttondelsfinaler</td><td>+2p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Kvartsfinaler</td><td>+3p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Semifinaler</td><td>+4p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Final</td><td>+5p per rätt lag, +3p bonus för exakt resultat</td></tr>
-          <tr><td>Bronsmatch</td><td>+3p per rätt lag, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Sextondelsfinal → Åttondelsfinal</td><td>+1p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Åttondelsfinal → Kvartsfinal</td><td>+2p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Kvartsfinal → Semifinal</td><td>+3p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Semifinal → Final</td><td>+4p per rätt lag som gick vidare, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Final (VM-vinnaren)</td><td>+5p per rätt lag, +3p bonus för exakt resultat</td></tr>
+          <tr><td>Bronsmatch</td><td>+4p per rätt lag, +3p bonus för exakt resultat</td></tr>
         </table>
         <p style="margin-top:.75rem">Exempel: Tippar du rätt vinnare OCH förlorare i finalen = <strong>10p</strong>. Exakt rätt resultat också = <strong>13p</strong>!</p>
       </div>
@@ -346,7 +346,7 @@ const R32_BRACKET=[
   [{type:'winner',group:'K',label:'1K'}, {type:'best3',pos:7,label:'Bästa 3:a (D/E/I/J/L)'}],
 ];
 
-const KO_ROUND_PTS={r32:1,r16:2,qf:3,sf:4,fin:5,'3rd':3};
+const KO_ROUND_PTS={r32:1,r16:2,qf:3,sf:4,fin:5,'3rd':4};
 
 // VM-frågor
 const QUESTIONS=[
