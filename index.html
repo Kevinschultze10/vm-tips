@@ -400,21 +400,20 @@ function ptsKO(tip,res,round){
     return{p:1,t:'w',lp:0};
   }
 
-  // Same match — 1p for right winner + advPts for advancing
-  const basePts = 1 + advPts;
-
   const scoresMatch = (tip.homeTeam===res.homeTeam)
     ? (th===rh && ta===ra)
     : (th===ra && ta===rh);
   if(scoresMatch){
     if(th===ta){
       const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
-      return penMatch?{p:basePts+3,t:'x',lp:advPts}:{p:basePts,t:'w',lp:advPts};
+      // Exact result (3p) + advancing (advPts), only if pen winner also matches
+      return penMatch?{p:3+advPts,t:'x',lp:advPts}:{p:1+advPts,t:'w',lp:advPts};
     }
-    return{p:basePts+3,t:'x',lp:advPts};
+    // Exact result (3p) + advancing (advPts)
+    return{p:3+advPts,t:'x',lp:advPts};
   }
-  // Same match, right winner, but wrong scoreline
-  return{p:basePts,t:'w',lp:advPts};
+  // Same match, right winner, but wrong scoreline — 1p (right winner) + advPts (advancing)
+  return{p:1+advPts,t:'w',lp:advPts};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
