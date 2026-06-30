@@ -1192,31 +1192,30 @@ async function renderAdmin(){
         <div class="tn">${m.away}</div><button class="btn btn-sm" onclick="confirmR('${m.id}')">OK</button></div>`;
     });
   }
-  // KO results — show ACTUAL teams based on real group results
+  // KO results — show the 16 CONFIRMED real sextondelsfinal matches (fixed list, not computed)
   const koNames={r32:'Sextondelsfinal',r16:'Åttondelsfinaler',qf:'Kvartsfinaler',sf:'Semifinaler',fin:'Final','3rd':'Bronsmatch'};
 
-  // Build actual group standings from real results (not player tips)
-  const actualTips={};
-  GM.forEach(m=>{
-    const r=results[m.id];
-    if(r&&r.home!=null&&r.away!=null)actualTips[m.id]={home:r.home,away:r.away};
-  });
-  const actualAdv=getGroupAdvancers(actualTips);
+  // These are the 16 confirmed real-world Round of 32 matches for VM 2026 (order matches R32_BRACKET slots)
+  const CONFIRMED_R32 = [
+    {home:'Tyskland',     away:'Paraguay'},          // r32_0
+    {home:'Frankrike',    away:'Sverige'},            // r32_1
+    {home:'Sydafrika',    away:'Kanada'},              // r32_2
+    {home:'Nederländerna',away:'Marocko'},             // r32_3
+    {home:'Colombia',     away:'Ghana'},               // r32_4
+    {home:'Spanien',      away:'Österrike'},           // r32_5
+    {home:'USA',          away:'Bosnien-Hercegovina'}, // r32_6
+    {home:'Belgien',      away:'Senegal'},             // r32_7
+    {home:'Brasilien',    away:'Japan'},               // r32_8
+    {home:'Elfenbenskusten',away:'Norge'},             // r32_9
+    {home:'Mexiko',       away:'Ecuador'},             // r32_10
+    {home:'England',      away:'DR Kongo'},            // r32_11
+    {home:'Argentina',    away:'Kap Verde'},           // r32_12
+    {home:'Australien',   away:'Egypten'},             // r32_13
+    {home:'Schweiz',      away:'Algeriet'},            // r32_14
+    {home:'Portugal',     away:'Kroatien'},            // r32_15
+  ];
 
-  function getActualKOWinner(roundResults,mid){
-    const r=roundResults[mid];
-    if(!r||r.home==null||r.away==null)return null;
-    if(r.home===r.away)return r.pen_winner||null;
-    return r.home>r.away?r.home_team_real:r.away_team_real;
-  }
-
-  // R32 — assign team names from actual standings
-  const r32Teams=[];
-  R32_BRACKET.forEach((slots,i)=>{
-    const ht=slots[0].type==='winner'?actualAdv.winners[slots[0].group]:slots[0].type==='runner'?actualAdv.runners[slots[0].group]:actualAdv.best3[slots[0].pos];
-    const at=slots[1].type==='winner'?actualAdv.winners[slots[1].group]:slots[1].type==='runner'?actualAdv.runners[slots[1].group]:actualAdv.best3[slots[1].pos];
-    r32Teams.push({home:ht,away:at});
-  });
+  const r32Teams = CONFIRMED_R32;
 
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r32}</div>`;
   r32Teams.forEach((teams,i)=>{
