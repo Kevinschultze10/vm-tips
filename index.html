@@ -379,7 +379,7 @@ function pts(tip,res){
 }
 function ptsKO(tip,res,round){
   if(!res||res.home==null)return null;
-  const advPts=KO_ROUND_PTS[round]||1; // points for advancing from this round
+  const advPts=KO_ROUND_PTS[round]||1; // points for advancing from this round (only if exact match)
   if(!tip||tip.home==null)return{p:0,t:'none'};
   const th=+tip.home,ta=+tip.away,rh=+res.home,ra=+res.away;
 
@@ -390,27 +390,30 @@ function ptsKO(tip,res,round){
   // No points at all if the winning team doesn't match (wrong team advancing)
   if(!tipWinner||!resWinner||tipWinner!==resWinner)return{p:0,t:'l'};
 
-  // Right team wins/advances — base points: 1p for right winner + advPts for advancing
-  const basePts = 1 + advPts;
-
-  // Check if it's also the exact same MATCH (same two teams) and exact same scoreline for the +3 bonus
+  // Check if it's also the exact same MATCH (same two teams)
   const sameMatch = tip.homeTeam && tip.awayTeam && res.homeTeam && res.awayTeam &&
     ((tip.homeTeam===res.homeTeam && tip.awayTeam===res.awayTeam) ||
      (tip.homeTeam===res.awayTeam && tip.awayTeam===res.homeTeam));
 
-  if(sameMatch){
-    const scoresMatch = (tip.homeTeam===res.homeTeam)
-      ? (th===rh && ta===ra)
-      : (th===ra && ta===rh);
-    if(scoresMatch){
-      if(th===ta){
-        const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
-        return penMatch?{p:basePts+3,t:'x',lp:advPts}:{p:basePts,t:'w',lp:advPts};
-      }
-      return{p:basePts+3,t:'x',lp:advPts};
-    }
+  if(!sameMatch){
+    // Right team won, but wrong opponent — just 1p for correctly picking the team to win
+    return{p:1,t:'w',lp:0};
   }
-  // Right team won, but not the exact match/scoreline — base points only
+
+  // Same match — 1p for right winner + advPts for advancing
+  const basePts = 1 + advPts;
+
+  const scoresMatch = (tip.homeTeam===res.homeTeam)
+    ? (th===rh && ta===ra)
+    : (th===ra && ta===rh);
+  if(scoresMatch){
+    if(th===ta){
+      const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
+      return penMatch?{p:basePts+3,t:'x',lp:advPts}:{p:basePts,t:'w',lp:advPts};
+    }
+    return{p:basePts+3,t:'x',lp:advPts};
+  }
+  // Same match, right winner, but wrong scoreline
   return{p:basePts,t:'w',lp:advPts};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
