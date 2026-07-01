@@ -853,7 +853,7 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   });
   html+=`</div>`;
   // R16 — explicit pairings
-  const R16_PAIRS=[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
   html+=`<div class="ko-section"><div class="stitle">Åttondelsfinaler</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;
@@ -1089,7 +1089,7 @@ function renderKOTreeReadonly(myTips, myKO){
   });
 
   // R16
-  const R16_PAIRS=[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
   html+=`<div style="font-weight:600;font-size:.85rem;margin:.8rem 0 .4rem">Åttondelsfinaler</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;
@@ -1246,7 +1246,7 @@ async function renderAdmin(){
   }
 
   // R16
-  const R16_PAIRS=[[0,1],[2,3],[4,5],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r16}</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;const r=results[mid]||{};
