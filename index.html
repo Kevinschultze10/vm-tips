@@ -867,7 +867,7 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   });
   html+=`</div>`;
   // QF
-  const QF_PAIRS=[[1,0],[5,4],[2,3],[7,6]];
+  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
   html+=`<div class="ko-section"><div class="stitle">Kvartsfinaler</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;
@@ -1100,7 +1100,7 @@ function renderKOTreeReadonly(myTips, myKO){
   });
 
   // QF
-  const QF_PAIRS=[[1,0],[5,4],[2,3],[7,6]];
+  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
   html+=`<div style="font-weight:600;font-size:.85rem;margin:.8rem 0 .4rem">Kvartsfinaler</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;
