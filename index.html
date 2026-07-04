@@ -853,7 +853,7 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   });
   html+=`</div>`;
   // R16 — explicit pairings
-  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[14,15],[12,13]];
   html+=`<div class="ko-section"><div class="stitle">Åttondelsfinaler</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;
@@ -867,7 +867,7 @@ function renderKOTree(playerTipsOverride=null,playerKOTipsOverride=null,readOnly
   });
   html+=`</div>`;
   // QF
-  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
+  const QF_PAIRS=[[1,0],[5,4],[2,3],[7,6]];
   html+=`<div class="ko-section"><div class="stitle">Kvartsfinaler</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;
@@ -1089,7 +1089,7 @@ function renderKOTreeReadonly(myTips, myKO){
   });
 
   // R16
-  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
+  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[14,15],[12,13]];
   html+=`<div style="font-weight:600;font-size:.85rem;margin:.8rem 0 .4rem">Åttondelsfinaler</div>`;
   R16_PAIRS.forEach(([a,b],i)=>{
     const mid='r16_'+i;
@@ -1100,7 +1100,7 @@ function renderKOTreeReadonly(myTips, myKO){
   });
 
   // QF
-  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
+  const QF_PAIRS=[[1,0],[5,4],[2,3],[7,6]];
   html+=`<div style="font-weight:600;font-size:.85rem;margin:.8rem 0 .4rem">Kvartsfinaler</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;
@@ -1245,22 +1245,30 @@ async function renderAdmin(){
     return r.home<r.away?r.real_home:r.real_away;
   }
 
-  // R16
-  const R16_PAIRS=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
+  // R16 — confirmed real matches (hardcoded)
+  const CONFIRMED_R16 = [
+    {home:'Kanada',    away:'Marocko'},    // r16_0
+    {home:'Paraguay',  away:'Frankrike'},  // r16_1
+    {home:'Brasilien', away:'Norge'},      // r16_2
+    {home:'Mexiko',    away:'England'},    // r16_3
+    {home:'Portugal',  away:'Spanien'},    // r16_4
+    {home:'USA',       away:'Belgien'},    // r16_5
+    {home:'Argentina', away:'Egypten'},    // r16_6
+    {home:'Schweiz',   away:'Colombia'},   // r16_7
+  ];
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r16}</div>`;
-  R16_PAIRS.forEach(([a,b],i)=>{
+  CONFIRMED_R16.forEach((teams,i)=>{
     const mid='r16_'+i;const r=results[mid]||{};
-    const ht=realWinner('r32_'+a), at=realWinner('r32_'+b);
-    window._matchTeamMap[mid]={home:ht,away:at};
-    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
-    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    window._matchTeamMap[mid]={home:teams.home,away:teams.away};
+    const htDisplay=teams.home;
+    const atDisplay=teams.away;
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
       <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
-  // QF
-  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
+  // QF — correct pairings based on real bracket
+  const QF_PAIRS=[[0,1],[4,5],[2,3],[6,7]];
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.qf}</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;const r=results[mid]||{};
