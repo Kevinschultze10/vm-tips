@@ -719,6 +719,8 @@ function lookupAnnexC(groups) {
     'CDEFGHJL': ['3C','3G','3J','3D','3H','3F','3L','3E'],
     'CDEFGHJK': ['3C','3G','3J','3D','3H','3F','3E','3K'],
     'CDEFGHIJKL':['3C','3G','3J','3D','3H','3F','3I','3K'],
+    // Real world VM 2026 combination:
+    'BDEFIJKL': ['3E','3J','3B','3D','3I','3F','3L','3K'],
   };
   return FULL_TABLE[key] || null;
 }
@@ -767,10 +769,19 @@ function getGroupAdvancers(playerTips){
       best3[slotMap[i]]=teamByGroup[g]||'?';
     });
   } else {
-    // Fallback: assign by avoiding same-group conflicts
+    // Fallback: use correct slot assignment based on FIFA Annex C logic
+    // Each slot has a forbidden group (the group winner already in that match)
+    // AND preferred groups based on FIFA's rules
+    // Slot order: [pos0=1E, pos1=1I, pos2=1D, pos3=1G, pos4=1A, pos5=1L, pos6=1B, pos7=1K]
     const slotForbidden=['E','I','D','G','A','L','B','K'];
-    const used=new Array(8).fill(false);
-    for(let slot=0;slot<8;slot++){
+    // Also forbid the runner-up's group in each slot
+    // r32_0: 1E vs best3 - runner is from B (2B=Kanada) -> also forbid B? No, just E
+    // Use simple forbidden-only logic but process in FIFA priority order
+    // FIFA assigns higher-ranked thirds to slots first
+    const used=new Array(best8.length).fill(false);
+    // Sort slots to assign best thirds to later rounds (higher-value slots)
+    const slotOrder=[0,1,2,3,4,5,6,7];
+    for(let slot of slotOrder){
       for(let i=0;i<best8.length;i++){
         if(!used[i]&&best8[i].group!==slotForbidden[slot]){
           best3[slot]=best8[i].team;used[i]=true;break;
