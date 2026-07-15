@@ -411,8 +411,8 @@ function ptsKO(tip,res,round){
     }
     return{p:3+advPts,t:'x',lp:advPts};
   }
-  // Same match, right winner, wrong scoreline — advPts only (no +1 for winner since advPts covers it)
-  return{p:advPts,t:'w',lp:advPts};
+  // Same match, right winner, wrong scoreline — advPts + 1p for right winner
+  return{p:1+advPts,t:'w',lp:advPts};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
