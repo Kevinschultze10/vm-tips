@@ -379,7 +379,7 @@ function pts(tip,res){
 }
 function ptsKO(tip,res,round){
   if(!res||res.home==null)return null;
-  const advPts=KO_ROUND_PTS[round]||1; // points for advancing from this round (only if exact match)
+  const advPts=KO_ROUND_PTS[round]||1;
   if(!tip||tip.home==null)return{p:0,t:'none'};
   const th=+tip.home,ta=+tip.away,rh=+res.home,ra=+res.away;
 
@@ -387,33 +387,32 @@ function ptsKO(tip,res,round){
   const tipWinner = th>ta?tip.homeTeam:(th<ta?tip.awayTeam:(tip.penWinner||null));
   const resWinner = rh>ra?res.homeTeam:(rh<ra?res.awayTeam:(res.penWinner||null));
 
-  // No points at all if the winning team doesn't match (wrong team advancing)
+  // No points if wrong team advancing
   if(!tipWinner||!resWinner||tipWinner!==resWinner)return{p:0,t:'l'};
 
-  // Check if it's also the exact same MATCH (same two teams)
+  // Check if same match (same two teams)
   const sameMatch = tip.homeTeam && tip.awayTeam && res.homeTeam && res.awayTeam &&
     ((tip.homeTeam===res.homeTeam && tip.awayTeam===res.awayTeam) ||
      (tip.homeTeam===res.awayTeam && tip.awayTeam===res.homeTeam));
 
   if(!sameMatch){
-    // Right team won, but wrong opponent — just 1p for correctly picking the team to win
-    return{p:1,t:'w',lp:0};
+    // Right team won but wrong opponent — get advPts for correct team advancing
+    return{p:advPts,t:'w',lp:advPts};
   }
 
+  // Same match — check exact scoreline for +3p bonus
   const scoresMatch = (tip.homeTeam===res.homeTeam)
     ? (th===rh && ta===ra)
     : (th===ra && ta===rh);
   if(scoresMatch){
     if(th===ta){
       const penMatch = !res.penWinner || !tip.penWinner || tip.penWinner===res.penWinner;
-      // Exact result (3p) + advancing (advPts), only if pen winner also matches
-      return penMatch?{p:3+advPts,t:'x',lp:advPts}:{p:1+advPts,t:'w',lp:advPts};
+      return penMatch?{p:3+advPts,t:'x',lp:advPts}:{p:advPts,t:'w',lp:advPts};
     }
-    // Exact result (3p) + advancing (advPts)
     return{p:3+advPts,t:'x',lp:advPts};
   }
-  // Same match, right winner, but wrong scoreline — 1p (right winner) + advPts (advancing)
-  return{p:1+advPts,t:'w',lp:advPts};
+  // Same match, right winner, wrong scoreline — advPts only (no +1 for winner since advPts covers it)
+  return{p:advPts,t:'w',lp:advPts};
 }
 function bdg(sc){if(!sc)return '';if(sc.t==='x')return '<span class="badge bx">+'+sc.p+'p ✓</span>';if(sc.t==='w')return '<span class="badge bw">+'+sc.p+'p</span>';if(sc.t==='l'||sc.t==='none')return '<span class="badge b0">0p</span>';return '';}
 function show(id){document.getElementById(id).style.display='flex';}
@@ -1245,30 +1244,22 @@ async function renderAdmin(){
     return r.home<r.away?r.real_home:r.real_away;
   }
 
-  // R16 — confirmed real matches (hardcoded)
-  const CONFIRMED_R16 = [
-    {home:'Kanada',    away:'Marocko'},    // r16_0
-    {home:'Paraguay',  away:'Frankrike'},  // r16_1
-    {home:'Brasilien', away:'Norge'},      // r16_2
-    {home:'Mexiko',    away:'England'},    // r16_3
-    {home:'Portugal',  away:'Spanien'},    // r16_4
-    {home:'USA',       away:'Belgien'},    // r16_5
-    {home:'Argentina', away:'Egypten'},    // r16_6
-    {home:'Schweiz',   away:'Colombia'},   // r16_7
-  ];
+  // R16 — use same structure as player bracket so results match correct match_ids
+  const R16_PAIRS_ADMIN=[[0,2],[1,4],[3,5],[6,7],[10,11],[8,9],[13,15],[12,14]];
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.r16}</div>`;
-  CONFIRMED_R16.forEach((teams,i)=>{
+  R16_PAIRS_ADMIN.forEach(([a,b],i)=>{
     const mid='r16_'+i;const r=results[mid]||{};
-    window._matchTeamMap[mid]={home:teams.home,away:teams.away};
-    const htDisplay=teams.home;
-    const atDisplay=teams.away;
+    const ht=realWinner('r32_'+a), at=realWinner('r32_'+b);
+    window._matchTeamMap[mid]={home:ht,away:at};
+    const htDisplay=ht||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
+    const atDisplay=at||'<span style="font-style:italic;color:var(--tm)">Ej klart</span>';
     h+=`<div class="am"><div class="tn" style="text-align:right">${htDisplay}</div>
       <div class="si"><input type="number" min="0" max="20" value="${r.home??''}" placeholder="–" onchange="setR('${mid}','home',this.value)"><span class="ssep">–</span><input type="number" min="0" max="20" value="${r.away??''}" placeholder="–" onchange="setR('${mid}','away',this.value)"></div>
       <div class="tn">${atDisplay}</div><button class="btn btn-sm" onclick="confirmRFromMap('${mid}')">OK</button></div>`;
   });
 
   // QF — correct pairings based on real bracket
-  const QF_PAIRS=[[0,1],[4,5],[2,3],[6,7]];
+  const QF_PAIRS=[[0,1],[2,3],[4,5],[6,7]];
   h+=`<div class="glabel" style="margin-top:.9rem">${koNames.qf}</div>`;
   QF_PAIRS.forEach(([a,b],i)=>{
     const mid='qf_'+i;const r=results[mid]||{};
